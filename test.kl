@@ -1,0 +1,2 @@
+extern putchar(c);
+def main() putchar(42);

@@ -24,8 +24,10 @@
      op
      [(:or :int :ref) y]]
     true
-    ;; Even expressions such as [:expr [:int \"1\"]] are not directly
-    ;; representable; they're too low-level, as we need to generate statements.
+    [:funcall & args] true
+    ;; Even expressions such as [:int "1"] are not directly
+    ;; representable as an SSA assignment; they're too low-level, as
+    ;; we need to generate statements.
     :else false))
 
 
@@ -35,9 +37,13 @@
 (defn ssaify [node ref]
   (match node
     [:binaryop x op y]
-    [:assign [:ref ref] [:instr op x y]]
-    ;; only binary ops supported
-    :else (throw (Exception. "Can't ssaify a non-binaryop node!"))))
+    [:assign [:ref ref] [:instr op x y]]    
+
+    [:funcall f & args]
+    [:assign [:ref ref] `[:instr [:call ~f] ~@args]]
+
+    :else (throw (Exception. "Can't ssaify node!"))))
+
 
 (defn operation-element? [node]
   (match node
@@ -84,19 +90,26 @@
   (match ast
     [:module & stmts] (clojure.string/join "\n" (map compile stmts))
 
-    [:statement [:def] [:name def-name] arglist body]
+    [:statement [:def] def-name arglist body]
     (str "define i32 @" def-name (compile arglist) "{" (compile body) "}")
 
-    [:statement [:extern] [:name extern-name] arglist]
-    (str "declare i32 @" extern-name (compile arglist) "{}")
+    [:statement [:extern] extern-name arglist]
+    (str "declare i32 @" extern-name (compile arglist))
 
-    [:arglist & names] (str "(" (str/join ", " (map compile names)) ")")
-    [:name n] (str "i32 %" n)
+    [:argname n] (str "%" n) ;;FIXME: distinguish between locals and globals
+
+    [:funcall f & args]
+    (compile (expr->ssa ast))    
+
+    [:arglist & names] (str "(i32 " (str/join ", i32 " (map compile names)) ")")
     [:binaryop x op y] (compile (expr->ssa ast))
     [:ssa & instrs] (str/join "\n" (map compile instrs))
 
-    [:instr [:operator op] & operands]
+    [:instr [:operator op] & operands]    
     (str (llvm-for-op op) " i32 " (str/join ", " (map compile operands)))
+
+    [:instr [:call f] & args]
+    (str "call i32 @" f "(i32 " (str/join ", i32 " (map compile args)) ")")
 
     [:int x] (str x)
     [:ref r] (str "%" r)
@@ -111,6 +124,5 @@
   [in out]
   (println "Compiling" in)
   (emit (parse (slurp in)) out))
-
 (comment
   (-> (parse "def myfn(a, b) 1 + 1 + 2;") (emit "test.ll")))
