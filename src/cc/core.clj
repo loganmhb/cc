@@ -16,6 +16,12 @@
 ;; - saving references to converted nodes and recursively subsituting
 ;;   them into the expression tree
 
+(defn operation-element? [node]
+  (match node
+    [:int _] true
+    [:operator _] true
+    [:ref _] true
+    :else false))
 
 (defn directly-representable? [node]
   (match node
@@ -24,15 +30,15 @@
      op
      [(:or :int :ref) y]]
     true
-    [:funcall & args] true
+    [:funcall f & args] (every? operation-element? args)
     ;; Even expressions such as [:int "1"] are not directly
     ;; representable as an SSA assignment; they're too low-level, as
     ;; we need to generate statements.
     :else false))
 
-
 (defn replace-node-with-ref [loc ref]
   (zip/replace loc [:ref ref]))
+
 
 (defn ssaify [node ref]
   (match node
@@ -44,13 +50,6 @@
 
     :else (throw (Exception. "Can't ssaify node!"))))
 
-
-(defn operation-element? [node]
-  (match node
-    [:int _] true
-    [:operator _] true
-    [:ref _] true
-    :else false))
 
 (defn expr->ssa  
   "Convert an expression tree into linearized SSA form (a vector of assignments)."
@@ -75,16 +74,13 @@
           :else ; start converting children, left first
           (recur (zip/next ast) ssa last-ref))))))
 
-#_(expr->ssa [:binaryop
-              [:int "1"]
-              [:operator "+"]
-              [:binaryop
-               [:int "1"]
-               [:operator "+"]
-               [:int "1"]]])
 
 (def llvm-for-op
-  {"+" "add"})
+  {"+" "add"
+   "-" "sub"
+   "*" "mul"
+   "/" "sdiv"})
+
 
 (defn compile [ast]
   (match ast
@@ -124,5 +120,4 @@
   [in out]
   (println "Compiling" in)
   (emit (parse (slurp in)) out))
-(comment
-  (-> (parse "def myfn(a, b) 1 + 1 + 2;") (emit "test.ll")))
+

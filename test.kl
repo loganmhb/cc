@@ -1,2 +1,2 @@
 extern putchar(c);
-def main() putchar(42);
+def main() putchar(7*6);
