@@ -4,7 +4,9 @@ A Clojure library designed to ... well, that part is up to you.
 
 ## Usage
 
-FIXME
+    lein run test.kl test.ll
+    clang test.ll
+    ./a.out
 
 ## License
 
