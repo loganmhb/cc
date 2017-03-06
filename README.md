@@ -1,16 +1,15 @@
 # cc
 
-A Clojure library designed to ... well, that part is up to you.
+A compiler for a tiny, nearly useless language which is a subset of Kaleidescope.
 
 ## Usage
 
+    # Test program:
     lein run test.kl test.ll
     clang test.ll
     ./a.out
-
-## License
-
-Copyright © 2016 FIXME
-
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
+    
+    # Hello world:
+    lein run hello.kl hello.ll
+    clang hello.ll
+    ./a.out
